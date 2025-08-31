@@ -6,4 +6,5 @@ main_latest.exe
 backup/
 build/
 dist/
-
+.vscode/
+.ide/
