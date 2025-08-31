@@ -386,6 +386,11 @@ class MultiSerialMonitor(QWidget):
                 self.save_log(port)
                 self.has_activity[port] = False  # 保存后重置活动标记
 
+    def closeEvent(self, event):
+        # 关闭窗口时保存所有已打开端口的日志
+        for port in list(self.threads.keys()):
+            self.save_log(port)
+        event.accept()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
