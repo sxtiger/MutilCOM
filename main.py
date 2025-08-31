@@ -7,13 +7,18 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QP
                              QCheckBox, QFileDialog, QGridLayout, QComboBox)
 from PyQt5.QtWidgets import QDialog, QFormLayout, QDialogButtonBox, QSpinBox
 from PyQt5.QtCore import QThread, pyqtSignal, QDateTime, QTimer 
-from PyQt5.QtGui import QColor, QTextCharFormat, QTextCursor, QPixmap
+from PyQt5.QtGui import QColor, QTextCharFormat, QTextCursor, QPixmap, QIcon
 import json
 
 # 发送历史记录
 HISTORY_FILE = "send_history.json"
 # 端口设置文件
 COM_SETTINGS_FILE = "comsettings.json"
+
+def resource_path(relative_path):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(os.path.abspath("."), relative_path)
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
@@ -132,6 +137,7 @@ class SerialMonitorThread(QThread):
 class MultiSerialMonitor(QWidget):
     def __init__(self):
         super().__init__()
+        self.setWindowIcon(QIcon(resource_path("serial.ico")))
         self.history = load_history()
         self.com_settings = load_com_settings()
         self.initUI()

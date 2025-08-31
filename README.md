@@ -3,6 +3,7 @@
 - add prots set
   - file: comsettings.json
   - default : 9600,8,N,1
+- add ico
 
 # V0.6
 
