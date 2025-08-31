@@ -1,0 +1,9 @@
+send_history.json
+code_library.txt
+log/
+*.log
+main_latest.exe
+backup/
+build/
+dist/
+
