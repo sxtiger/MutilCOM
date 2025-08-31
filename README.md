@@ -4,7 +4,7 @@
 - save the trans history(send_history.json)
 - save all the logs(port+data+time) per 24H with timer(log/)
 # Code_library.txt
-code+#+describe, Example:
+Format: code + # + describe, Example:
 ```text
 01 03 00 00 00 0A 44 09 #read register
 ```
