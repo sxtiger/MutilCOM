@@ -1,3 +1,9 @@
+# V0.7
+
+- add prots set
+  - file: comsettings.json
+  - default : 9600,8,N,1
+
 # V0.6
 
 - scan all COM ports in Computer

@@ -146,7 +146,7 @@ class MultiSerialMonitor(QWidget):
 
 
     def initUI(self):
-        self.setWindowTitle("多串口通信程序V0.6")
+        self.setWindowTitle("多串口通信程序V0.7")
         self.setGeometry(100, 100, 1200, 800)
 
         main_layout = QVBoxLayout()
