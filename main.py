@@ -5,15 +5,15 @@ import datetime
 import serial.tools.list_ports
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLineEdit, QLabel,
                              QCheckBox, QFileDialog, QGridLayout, QComboBox)
+from PyQt5.QtWidgets import QDialog, QFormLayout, QDialogButtonBox, QSpinBox
 from PyQt5.QtCore import QThread, pyqtSignal, QDateTime, QTimer 
 from PyQt5.QtGui import QColor, QTextCharFormat, QTextCursor, QPixmap
-
-##1. 保存和加载历史记录
-
-import os
 import json
 
+# 发送历史记录
 HISTORY_FILE = "send_history.json"
+# 端口设置文件
+COM_SETTINGS_FILE = "comsettings.json"
 
 def load_history():
     if os.path.exists(HISTORY_FILE):
@@ -25,18 +25,77 @@ def save_history(history):
     with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
         json.dump(history, f, ensure_ascii=False, indent=4)
 
+def load_com_settings():
+    if os.path.exists(COM_SETTINGS_FILE):
+        with open(COM_SETTINGS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_com_settings(settings):
+    with open(COM_SETTINGS_FILE, "w", encoding="utf-8") as f:
+        json.dump(settings, f, ensure_ascii=False, indent=4)
+
+class PortSettingsDialog(QDialog):
+    def __init__(self, port, settings, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"{port} 设置")
+        self.settings = settings.copy()
+        layout = QFormLayout(self)
+
+        self.baudrate = QSpinBox()
+        self.baudrate.setRange(1200, 115200)
+        self.baudrate.setValue(self.settings.get("baudrate", 9600))
+        layout.addRow("波特率", self.baudrate)
+
+        self.bytesize = QComboBox()
+        self.bytesize.addItems(["5", "6", "7", "8"])
+        self.bytesize.setCurrentText(str(self.settings.get("bytesize", 8)))
+        layout.addRow("数据位", self.bytesize)
+
+        self.parity = QComboBox()
+        self.parity.addItems(["N", "E", "O", "M", "S"])
+        self.parity.setCurrentText(self.settings.get("parity", "N"))
+        layout.addRow("校验", self.parity)
+
+        self.stopbits = QComboBox()
+        self.stopbits.addItems(["1", "1.5", "2"])
+        self.stopbits.setCurrentText(str(self.settings.get("stopbits", 1)))
+        layout.addRow("停止位", self.stopbits)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_settings(self):
+        return {
+            "baudrate": self.baudrate.value(),
+            "bytesize": int(self.bytesize.currentText()),
+            "parity": self.parity.currentText(),
+            "stopbits": float(self.stopbits.currentText())
+        }
+
 class SerialMonitorThread(QThread):
     new_data = pyqtSignal(str, str, str)  # (port, direction, data)
 
-    def __init__(self, port):
+    def __init__(self, port, settings=None):
         super().__init__()
         self.port = port
         self.serial = serial.Serial()
         self.serial.port = port
-        self.serial.baudrate = 9600
-        self.serial.bytesize = serial.EIGHTBITS
-        self.serial.parity = serial.PARITY_NONE
-        self.serial.stopbits = serial.STOPBITS_ONE
+        if settings is None:
+            settings = {}
+        self.serial.baudrate = settings.get("baudrate", 9600)
+        self.serial.bytesize = settings.get("bytesize", serial.EIGHTBITS)
+        parity_map = {
+            "N": serial.PARITY_NONE,
+            "E": serial.PARITY_EVEN,
+            "O": serial.PARITY_ODD,
+            "M": serial.PARITY_MARK,
+            "S": serial.PARITY_SPACE
+        }
+        self.serial.parity = parity_map.get(settings.get("parity", "N"), serial.PARITY_NONE)
+        self.serial.stopbits = settings.get("stopbits", serial.STOPBITS_ONE)
         self.serial.timeout = 0.1
         self.running = False
 
@@ -74,6 +133,7 @@ class MultiSerialMonitor(QWidget):
     def __init__(self):
         super().__init__()
         self.history = load_history()
+        self.com_settings = load_com_settings()
         self.initUI()
         self.threads = {}
         self.code_library = self.load_code_library("code_library.txt")
@@ -99,15 +159,20 @@ class MultiSerialMonitor(QWidget):
         ports_layout = QHBoxLayout()
         self.port_checkboxes = {}
         self.port_labels = {}
+        self.port_settings_buttons = {}  # 新增
         ports = serial.tools.list_ports.comports()
         for port in ports:
             cb = QCheckBox(port.device)
             cb.stateChanged.connect(self.toggle_monitoring)
             label = QLabel()
+            settings_btn = QPushButton("设置")
+            settings_btn.clicked.connect(lambda checked, p=port.device: self.show_port_settings(p))
             ports_layout.addWidget(cb)
             ports_layout.addWidget(label)
+            ports_layout.addWidget(settings_btn)
             self.port_checkboxes[port.device] = cb
             self.port_labels[port.device] = label
+            self.port_settings_buttons[port.device] = settings_btn
             self.update_port_label(port.device, False)
         main_layout.addLayout(ports_layout)
 
@@ -121,6 +186,13 @@ class MultiSerialMonitor(QWidget):
         main_layout.addLayout(self.grid_layout)
 
         self.setLayout(main_layout)
+
+    def show_port_settings(self, port):
+        current_settings = self.com_settings.get(port, {})
+        dlg = PortSettingsDialog(port, current_settings, self)
+        if dlg.exec_():
+            self.com_settings[port] = dlg.get_settings()
+            save_com_settings(self.com_settings)
 
     def load_code_library(self, file_path):
         code_library = {}
@@ -144,13 +216,15 @@ class MultiSerialMonitor(QWidget):
         port = sender.text()
         if state == 2:  # Checked
             if port not in self.threads:
-                thread = SerialMonitorThread(port)
+                settings = self.com_settings.get(port, {})
+                settings = self.com_settings.get(port, {})
+                thread = SerialMonitorThread(port, settings)
                 thread.new_data.connect(self.update_text_edit)
                 thread.start()
                 self.threads[port] = thread
                 self.update_port_label(port, True)
                 self.add_port_widgets(port)
-                self.has_activity[port] = False  # 新增：初始化活动标记
+                self.has_activity[port] = False
         else:  # Unchecked
             if port in self.threads:
                 self.save_log(port)
@@ -159,7 +233,7 @@ class MultiSerialMonitor(QWidget):
                 self.update_port_label(port, False)
                 self.remove_port_widgets(port)
                 if port in self.has_activity:
-                    del self.has_activity[port]  # 移除活动标记
+                    del self.has_activity[port]
 
     def update_text_edit(self, port, direction, data):
         # 标记该串口有活动
