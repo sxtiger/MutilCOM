@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QP
                              QCheckBox, QFileDialog, QGridLayout, QComboBox)
 from PyQt5.QtWidgets import QDialog, QFormLayout, QDialogButtonBox, QSpinBox
 from PyQt5.QtCore import QThread, pyqtSignal, QDateTime, QTimer 
-from PyQt5.QtGui import QColor, QTextCharFormat, QTextCursor, QPixmap, QIcon
+from PyQt5.QtGui import QColor, QTextCharFormat, QTextCursor, QPixmap, QIcon, QPainter
 import json
 
 # 发送历史记录
@@ -165,20 +165,30 @@ class MultiSerialMonitor(QWidget):
         ports_layout = QHBoxLayout()
         self.port_checkboxes = {}
         self.port_labels = {}
-        self.port_settings_buttons = {}  # 新增
+        self.port_settings_buttons = {} 
         ports = serial.tools.list_ports.comports()
-        for port in ports:
+        for idx, port in enumerate(ports):
+            port_layout = QHBoxLayout()
             cb = QCheckBox(port.device)
             cb.stateChanged.connect(self.toggle_monitoring)
-            label = QLabel()
+            label_pixmap = QLabel()
+            self.port_checkboxes[port.device] = cb
+            self.port_labels[port.device] = label_pixmap
             settings_btn = QPushButton("设置")
             settings_btn.clicked.connect(lambda checked, p=port.device: self.show_port_settings(p))
-            ports_layout.addWidget(cb)
-            ports_layout.addWidget(label)
-            ports_layout.addWidget(settings_btn)
-            self.port_checkboxes[port.device] = cb
-            self.port_labels[port.device] = label
             self.port_settings_buttons[port.device] = settings_btn
+
+            port_layout.addWidget(cb)
+            port_layout.addWidget(label_pixmap)
+            port_layout.addWidget(settings_btn)
+            port_layout.setSpacing(2)
+            # 只在不是最后一个端口时加分隔符
+            if idx != len(ports) - 1:
+                sep = QLabel("|")
+                sep.setStyleSheet("color: gray; font-weight: bold; margin-left:4px; margin-right:4px;")
+                port_layout.addWidget(sep)
+
+            ports_layout.addLayout(port_layout)
             self.update_port_label(port.device, False)
         main_layout.addLayout(ports_layout)
 
@@ -292,8 +302,15 @@ class MultiSerialMonitor(QWidget):
 
     def update_port_label(self, port, active):
         label = self.port_labels[port]
-        pixmap = QPixmap(10, 10)
-        pixmap.fill(QColor('green') if active else QColor('gray'))
+        pixmap = QPixmap(20, 20)
+        pixmap.fill(QColor('transparent'))  # 先填充透明背景
+        from PyQt5.QtGui import QPainter
+        painter = QPainter(pixmap)
+        color = QColor('red') if active else QColor('gray')
+        painter.setBrush(color)
+        painter.setPen(color)
+        painter.drawEllipse(0, 0, 15, 15)  # 绘制圆形
+        painter.end()
         label.setPixmap(pixmap)
 
     def add_port_widgets(self, port):
