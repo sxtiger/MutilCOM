@@ -1,0 +1,74 @@
+[
+    {
+        "name": "主卧温度",
+        "query": "1D 03 00 00 00 02 C6 57",
+        "interval": 600,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    },
+    {
+        "name": "次卧温度",
+        "query": "11 03 00 00 00 02 C6 9B",
+        "interval": 602,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    },
+    {
+        "name": "书房温度",
+        "query": "12 03 00 00 00 02 C6 A8",
+        "interval": 604,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    },
+    {
+        "name": "外卫温度",
+        "query": "13 03 00 00 00 02 C7 79",
+        "interval": 606,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    },
+    {
+        "name": "内卫温度",
+        "query": "14 03 00 00 00 02 C6 CE",
+        "interval": 608,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    },
+    {
+        "name": "餐厅温度",
+        "query": "1C 03 00 00 00 02 C7 86",
+        "interval": 610,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    },
+    {
+        "name": "厨房温度",
+        "query": "0E 03 00 00 00 02 C4 F4",
+        "interval": 612,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    },
+    {
+        "name": "阳台温度",
+        "query": "15 03 00 00 00 02 C7 1F",
+        "interval": 614,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    },
+    {
+        "name": "机柜温度",
+        "query": "16 03 00 00 00 02 C7 2C",
+        "interval": 616,
+        "formula": "[5,2] / 10",
+        "unit": "摄氏度",
+        "last_update": 0
+    }
+]
