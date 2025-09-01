@@ -20,7 +20,7 @@ Format: code + # + describe, Example:
 01 03 00 00 00 0A 44 09 #read register
 ```
 
-# Depends
+# Dependency
 
 ```bash
 pip install -r requirements.txt
