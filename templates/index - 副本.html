@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多串口通信程序 Web版</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .status {
+            background-color: #ecf0f1;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .ports-section {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .ports-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .port-item {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #fafafa;
+        }
+
+        .port-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .port-name {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .port-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #95a5a6;
+        }
+
+        .port-status.active {
+            background-color: #e74c3c;
+        }
+
+        .port-controls {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.3s;
+        }
+
+        .btn-primary {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-success {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #219a52;
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #7f8c8d;
+        }
+
+        .port-data {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            border-radius: 3px;
+            margin-bottom: 10px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .sent-data {
+            color: #e74c3c;
+        }
+
+        .received-data {
+            color: #2ecc71;
+        }
+
+        .send-section {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .send-input {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .history-select {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 5px;
+            }
+
+            .header {
+                padding: 10px;
+                font-size: 16px;
+            }
+
+            .ports-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .port-data {
+                height: 200px;
+                font-size: 11px;
+            }
+
+            .btn {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+
+            .send-section {
+                flex-direction: column;
+            }
+
+            .send-section .btn {
+                margin-top: 5px;
+            }
+        }
+
+        /* 滚动条样式 */
+        .port-data::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .port-data::-webkit-scrollbar-track {
+            background: #34495e;
+        }
+
+        .port-data::-webkit-scrollbar-thumb {
+            background: #7f8c8d;
+            border-radius: 3px;
+        }
+
+        .port-data::-webkit-scrollbar-thumb:hover {
+            background: #95a5a6;
+        }
+
+        /* 设置对话框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 5px;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #e74c3c;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>多串口通信程序 Web版</h1>
+            <div>远程控制界面</div>
+        </div>
+
+        <div class="status">
+            <div>连接状态: <span id="connection-status">连接中...</span></div>
+            <div>活动端口: <span id="active-ports-count">0</span></div>
+        </div>
+
+        <div class="ports-section">
+            <h3>串口控制</h3>
+            <div class="ports-grid" id="ports-container">
+                <!-- 动态生成端口卡片 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 端口设置模态框 -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>端口设置</h3>
+                <span class="close" onclick="closeSettingsModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="baudrate">波特率:</label>
+                    <select id="baudrate">
+                        <option value="9600">9600</option>
+                        <option value="19200">19200</option>
+                        <option value="38400">38400</option>
+                        <option value="57600">57600</option>
+                        <option value="115200">115200</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="bytesize">数据位:</label>
+                    <select id="bytesize">
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="parity">校验:</label>
+                    <select id="parity">
+                        <option value="N">None</option>
+                        <option value="E">Even</option>
+                        <option value="O">Odd</option>
+                        <option value="M">Mark</option>
+                        <option value="S">Space</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stopbits">停止位:</label>
+                    <select id="stopbits">
+                        <option value="1">1</option>
+                        <option value="1.5">1.5</option>
+                        <option value="2">2</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+                    <button class="btn btn-secondary" onclick="closeSettingsModal()">取消</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket连接配置
+        const socket = io({
+            transports: ['websocket', 'polling'],
+            upgrade: true,
+            rememberUpgrade: true,
+            timeout: 20000,
+            forceNew: false,
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            reconnectionDelayMax: 5000,
+            maxReconnectionAttempts: 5
+        });
+        
+        let currentSettingsPort = null;
+        let portData = {};  // 存储各端口的数据
+        let sendHistory = [];  // 发送历史
+        let reconnectCount = 0;
+
+        // 连接状态处理
+        socket.on('connect', function() {
+            console.log('WebSocket connected, transport:', socket.io.engine.transport.name);
+            reconnectCount = 0;
+            document.getElementById('connection-status').textContent = '已连接';
+            document.getElementById('connection-status').style.color = 'green';
+            
+            // 连接成功后请求所有活动端口的数据
+            setTimeout(function() {
+                Object.keys(portData).forEach(port => {
+                    socket.emit('request_port_data', {port: port});
+                });
+            }, 100);
+        });
+
+        socket.on('disconnect', function(reason) {
+            console.log('WebSocket disconnected, reason:', reason);
+            document.getElementById('connection-status').textContent = '连接断开: ' + reason;
+            document.getElementById('connection-status').style.color = 'red';
+        });
+
+        socket.on('connect_error', function(error) {
+            console.error('WebSocket connection error:', error);
+            reconnectCount++;
+            document.getElementById('connection-status').textContent = '连接错误 (尝试 ' + reconnectCount + ')';
+            document.getElementById('connection-status').style.color = 'red';
+        });
+        
+        socket.on('reconnect', function(attemptNumber) {
+            console.log('WebSocket reconnected after', attemptNumber, 'attempts');
+            document.getElementById('connection-status').textContent = '重新连接成功';
+            document.getElementById('connection-status').style.color = 'green';
+        });
+        
+        socket.on('reconnect_error', function(error) {
+            console.error('WebSocket reconnection error:', error);
+        });
+        
+        socket.on('reconnect_failed', function() {
+            console.error('WebSocket reconnection failed');
+            document.getElementById('connection-status').textContent = '重连失败，请刷新页面';
+            document.getElementById('connection-status').style.color = 'red';
+        });
+
+        // 接收端口列表更新
+        socket.on('ports_update', function(ports) {
+            console.log('Received ports update:', ports);
+            updatePortsDisplay(ports);
+        });
+
+        // 接收历史记录更新
+        socket.on('history_update', function(history) {
+            console.log('Received history update:', history);
+            sendHistory = history;
+            updateHistorySelects();
+        });
+
+        // 接收数据
+        socket.on('data_received', function(data) {
+            console.log('Received data:', data);
+            addDataToPort(data.port, data.entry);
+        });
+
+        // 数据发送确认
+        socket.on('data_sent', function(data) {
+            console.log('Data sent confirmation:', data);
+            // 数据已通过data_received事件处理
+        });
+
+        // 端口启动确认
+        socket.on('port_started', function(data) {
+            console.log('Port started:', data.port);
+        });
+
+        // 端口停止确认
+        socket.on('port_stopped', function(data) {
+            console.log('Port stopped:', data.port);
+        });
+
+        // 数据清除确认
+        socket.on('data_cleared', function(data) {
+            console.log('Data cleared:', data.port);
+            if (portData[data.port]) {
+                portData[data.port] = [];
+                updatePortDataDisplay(data.port);
+            }
+        });
+
+        // 更新端口显示
+        function updatePortsDisplay(ports) {
+            const container = document.getElementById('ports-container');
+            container.innerHTML = '';
+
+            let activeCount = 0;
+            ports.forEach(port => {
+                if (port.active) activeCount++;
+                
+                const portCard = createPortCard(port);
+                container.appendChild(portCard);
+
+                // 如果端口激活，请求其数据
+                if (port.active) {
+                    socket.emit('request_port_data', {port: port.device});
+                    if (!portData[port.device]) {
+                        portData[port.device] = [];
+                    }
+                }
+            });
+
+            document.getElementById('active-ports-count').textContent = activeCount;
+        }
+
+        // 创建端口卡片
+        function createPortCard(port) {
+            const card = document.createElement('div');
+            card.className = 'port-item';
+            card.id = `port-${port.device}`;
+
+            card.innerHTML = `
+                <div class="port-header">
+                    <div class="port-name">${port.device}</div>
+                    <div class="port-status ${port.active ? 'active' : ''}" id="status-${port.device}"></div>
+                </div>
+                <div class="port-controls">
+                    <button class="btn ${port.active ? 'btn-danger' : 'btn-success'}" 
+                            onclick="togglePort('${port.device}', ${port.active})"
+                            id="toggle-${port.device}">
+                        ${port.active ? '停止' : '启动'}
+                    </button>
+                    <button class="btn btn-primary" onclick="showSettings('${port.device}')">设置</button>
+                </div>
+                <div class="port-data" id="data-${port.device}" ${!port.active ? 'style="display:none"' : ''}></div>
+                <div class="${port.active ? '' : 'hidden'}" id="controls-${port.device}">
+                    <div class="send-section">
+                        <input type="text" class="send-input" id="input-${port.device}" 
+                               placeholder="输入16进制数据..." onkeypress="handleEnterKey(event, '${port.device}')">
+                        <button class="btn btn-primary" onclick="sendData('${port.device}')">发送</button>
+                    </div>
+                    <div class="send-section">
+                        <select class="history-select" id="history-${port.device}" 
+                                onchange="selectFromHistory('${port.device}')">
+                            <option value="">选择历史记录...</option>
+                        </select>
+                    </div>
+                    <div class="send-section">
+                        <button class="btn btn-secondary" onclick="clearData('${port.device}')">清除</button>
+                        <button class="btn btn-secondary" onclick="saveLog('${port.device}')">保存</button>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // 切换端口状态
+        function togglePort(port, isActive) {
+            if (isActive) {
+                socket.emit('stop_port', {port: port});
+            } else {
+                socket.emit('start_port', {port: port});
+            }
+        }
+
+        // 发送数据
+        function sendData(port) {
+            const input = document.getElementById(`input-${port}`);
+            const data = input.value.trim();
+            
+            if (!data) {
+                alert('请输入数据');
+                return;
+            }
+
+            // 验证16进制格式
+            if (!/^[0-9A-Fa-f\s]+$/.test(data)) {
+                alert('请输入有效的16进制数据');
+                return;
+            }
+
+            socket.emit('send_data', {port: port, data: data});
+            input.value = '';
+        }
+
+        // 处理回车键发送
+        function handleEnterKey(event, port) {
+            if (event.key === 'Enter') {
+                sendData(port);
+            }
+        }
+
+        // 从历史记录选择
+        function selectFromHistory(port) {
+            const select = document.getElementById(`history-${port}`);
+            const input = document.getElementById(`input-${port}`);
+            if (select.value) {
+                input.value = select.value;
+                select.selectedIndex = 0;
+            }
+        }
+
+        // 添加数据到端口显示
+        function addDataToPort(port, entry) {
+            if (!portData[port]) {
+                portData[port] = [];
+            }
+            
+            portData[port].push(entry);
+            
+            // 限制显示条数
+            if (portData[port].length > 1000) {
+                portData[port] = portData[port].slice(-1000);
+            }
+            
+            updatePortDataDisplay(port);
+        }
+
+        // 更新端口数据显示
+        function updatePortDataDisplay(port) {
+            const dataDiv = document.getElementById(`data-${port}`);
+            if (!dataDiv || !portData[port]) return;
+
+            let html = '';
+            portData[port].forEach(entry => {
+                const className = entry.direction === 'sent' ? 'sent-data' : 'received-data';
+                // 直接使用entry.data，因为它已经包含了完整的格式化数据
+                html += `<div class="${className}">${entry.data}</div>`;
+            });
+
+            dataDiv.innerHTML = html;
+            dataDiv.scrollTop = dataDiv.scrollHeight;
+        }
+
+        // 接收端口数据
+        socket.on('port_data', function(data) {
+            portData[data.port] = data.data;
+            updatePortDataDisplay(data.port);
+        });
+
+        // 清除数据
+        function clearData(port) {
+            socket.emit('clear_data', {port: port});
+        }
+
+        // 保存日志
+        function saveLog(port) {
+            if (!portData[port] || portData[port].length === 0) {
+                alert('没有数据可保存');
+                return;
+            }
+
+            let content = '';
+            portData[port].forEach(entry => {
+                // 直接使用entry.data，因为它已经包含了完整的格式化数据
+                content += `${entry.data}\n`;
+            });
+
+            const blob = new Blob([content], {type: 'text/plain'});
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${port}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.log`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // 显示设置对话框
+        function showSettings(port) {
+            currentSettingsPort = port;
+            
+            // 获取当前设置
+            fetch(`/api/port/${port}/settings`)
+                .then(response => response.json())
+                .then(settings => {
+                    document.getElementById('baudrate').value = settings.baudrate || 9600;
+                    document.getElementById('bytesize').value = settings.bytesize || 8;
+                    document.getElementById('parity').value = settings.parity || 'N';
+                    document.getElementById('stopbits').value = settings.stopbits || 1;
+                    
+                    document.getElementById('settings-modal').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('获取设置失败:', error);
+                });
+        }
+
+        // 保存设置
+        function saveSettings() {
+            if (!currentSettingsPort) return;
+
+            const settings = {
+                baudrate: parseInt(document.getElementById('baudrate').value),
+                bytesize: parseInt(document.getElementById('bytesize').value),
+                parity: document.getElementById('parity').value,
+                stopbits: parseFloat(document.getElementById('stopbits').value)
+            };
+
+            fetch(`/api/port/${currentSettingsPort}/settings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    closeSettingsModal();
+                    alert('设置已保存');
+                } else {
+                    alert('保存设置失败');
+                }
+            })
+            .catch(error => {
+                console.error('保存设置失败:', error);
+                alert('保存设置失败');
+            });
+        }
+
+        // 关闭设置对话框
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').style.display = 'none';
+            currentSettingsPort = null;
+        }
+
+        // 更新历史记录选择框
+        function updateHistorySelects() {
+            document.querySelectorAll('[id^="history-"]').forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">选择历史记录...</option>';
+                
+                sendHistory.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item;
+                    option.textContent = item;
+                    select.appendChild(option);
+                });
+                
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('settings-modal');
+            if (event.target === modal) {
+                closeSettingsModal();
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 页面加载完成后的初始化工作
+            console.log('Web interface initialized');
+        });
+    </script>
+</body>
+</html>

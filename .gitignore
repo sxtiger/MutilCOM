@@ -1,0 +1,8 @@
+_pycache_/
+.vscode/
+build/
+dist/
+*副本.py
+code_library.txt
+comsettings.json
+send_history.json

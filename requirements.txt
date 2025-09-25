@@ -1,0 +1,7 @@
+Flask==2.2.5
+Flask-SocketIO==5.1.0
+PyQt5==5.15.10
+pyserial==3.5
+python-socketio==5.1.0
+eventlet==0.33.3
+python-engineio==4.3.0

@@ -1,0 +1,9 @@
+{
+    "COM5": {
+        "name": "main port",
+        "baudrate": 9600,
+        "bytesize": 8,
+        "parity": "N",
+        "stopbits": 1.0
+    }
+}
