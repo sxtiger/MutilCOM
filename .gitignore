@@ -2,6 +2,7 @@ _pycache_/
 .vscode/
 build/
 dist/
+log/
 *副本.py
 code_library.txt
 comsettings.json
